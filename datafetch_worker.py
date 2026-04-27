@@ -74,7 +74,7 @@ class DataFetchWorker(QThread):
                 # Fetch data for the current variable-unit pair
                 success = self.fetch_data(variable, unit)
                 if not success:
-                    self.error_occurred.emit(_("Error while fetching data. D1"))
+                    # Error was already emitted by fetch_data
                     return
 
                 # Update progress after successful fetch
@@ -97,7 +97,10 @@ class DataFetchWorker(QThread):
             bool: True if the data was fetched successfully, False otherwise.
         """
         page = 0
-        while True:
+        max_retries = 15
+        retry_count = 0
+        
+        while retry_count < max_retries:
             # Get a valid token for the request
             token = Tokens().get_random_token()
 
@@ -132,9 +135,7 @@ class DataFetchWorker(QThread):
                 )
                 
                 # Check rate limit headers
-                rate_limit_remaining = response.headers.get('X-Rate-Limit-Remaining')
-                rate_limit_reset = response.headers.get('X-Rate-Limit-Reset')
-                
+                rate_limit_remaining = response.headers.get('X-Rate-Limit-Remaining')        
                 
                 if response.status == 200:
                     import json
@@ -145,26 +146,34 @@ class DataFetchWorker(QThread):
 
                     # Stop if there's no next page
                     if "links" not in data or "next" not in data["links"]:
-                        break
+                        return True
 
                     page += 1
+                    retry_count = 0  # Reset retry counter on success
                     time.sleep(1)  # Rate limiting between requests
                 elif rate_limit_remaining is not None and int(rate_limit_remaining) == 0:
-                    # token has hit the rate limit - mark it as failed and try again with a different token
-                    print(f"Invalid token ({response.status}) for {variable} and {unit}")
-                    Tokens().mark_token_failed(token)   
+                    # Token has hit the rate limit - mark it as failed and try again
+                    print(f"Rate limit hit for token - retrying with different token")
+                    Tokens().mark_token_failed(token)
+                    retry_count += 1
                     continue
                 else:
-                    # Other HTTP errors - try again with different token
-                    print(f"HTTP {response.status} for {variable} and {unit} - retrying with different token")
+                    # Other HTTP errors - try again
+                    print(f"HTTP {response.status} for {variable} and {unit} - retrying")
+                    retry_count += 1
                     continue
             except urllib3.exceptions.TimeoutError:
-                print(f"Timeout while fetching data for {variable} and {unit} - retrying with different token")
+                print(f"Timeout while fetching data for {variable} and {unit} - retrying")
+                retry_count += 1
                 continue
             except Exception as e:
-                print(f"Exception: {e} - retrying with different token")
+                print(f"Exception: {e} - retrying")
+                retry_count += 1
                 continue
-        return True
+        
+        # If we've exhausted retries, emit error
+        self.error_occurred.emit(_("Error while fetching data. D1"))
+        return False
 
 
     def process_response(self, data):
