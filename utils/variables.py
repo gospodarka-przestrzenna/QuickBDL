@@ -96,7 +96,7 @@ class Variables(object):
             "subject-id": subject_code
         }
         headers = {"X-ClientId": token}
-        response = requests.get(API_BASE_URL_VARIABLES, headers=headers, params=data)
+        response = requests.get(API_BASE_URL_VARIABLES, headers=headers, params=data, timeout=30)
         if response.status_code == 200:
             return response.json()
         else:

@@ -104,7 +104,7 @@ class Geometry(object):
             'outputFormat': 'application/gml+xml; version=3.2',
 
         }
-        response = requests.get(wfs_url, params=params)
+        response = requests.get(wfs_url, params=params, timeout=30)
 
         if response.status_code != 200:
             print('Failed to fetch geometries')
@@ -141,7 +141,7 @@ class Geometry(object):
             'outputFormat': 'application/gml+xml; version=3.2',
 
         }
-        response = requests.get(wfs_url, params=params)
+        response = requests.get(wfs_url, params=params, timeout=30)
 
         if response.status_code != 200:
             print('Failed to fetch geometries')

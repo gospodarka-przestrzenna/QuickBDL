@@ -54,6 +54,7 @@ class Tokens(object):
         mail_uuid = str(uuid.uuid4())
         response = requests.post(
             url, 
+            timeout=30,
             data={"Email": "{token}@uuid.com".format(token=mail_uuid)} # we need to provide an email
         )
         token = response.text.split(": ")[1].split("<")[0]

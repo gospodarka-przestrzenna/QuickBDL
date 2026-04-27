@@ -73,7 +73,7 @@ class Teryt(object):
             "page-size": 100
         }
         headers = {"X-ClientId": token}
-        response = requests.get(API_BASE_URL, headers=headers, params=params)
+        response = requests.get(API_BASE_URL, headers=headers, params=params, timeout=30)
         if response.status_code == 200:
             return response.json()
         else:

@@ -71,7 +71,7 @@ class Subjects(object):
             data.pop("parent-id")
         # Send request
         headers = {"X-ClientId": token}
-        response = requests.get(API_BASE_URL_SUBJECTS, headers=headers, params=data)
+        response = requests.get(API_BASE_URL_SUBJECTS, headers=headers, params=data, timeout=30)
         if response.status_code == 200:
             return response.json()
         else:
