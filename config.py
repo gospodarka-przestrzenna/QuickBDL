@@ -15,6 +15,6 @@ import os
 DB_FILENAME = "data.sqlite"
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
-DB_PATH = os.path.join(current_dir,DB_FILENAME)
+DB_PATH = os.path.join(current_dir, DB_FILENAME)
 
 DATABASE_URL = "https://github.com/gospodarka-przestrzenna/QuickBDL/releases/download/database/data.sqlite"

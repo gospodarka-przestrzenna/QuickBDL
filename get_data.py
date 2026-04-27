@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import QAction, QDialog
 from qgis.core import QgsProject
 import os
 from .utils.translations import _
-from .config import DB_PATH,DATABASE_URL
+from .config import DB_PATH, DATABASE_URL
 from .subjects_form import SubjectsForm
 from .units_form import UnitsForm
 from .years_form import YearsForm
@@ -22,16 +22,17 @@ from .datafetch_form import DataFetchForm
 from .approach_form import ApproachForm
 from .initialization_form import DataInitializationDialog
 
+
 class GetBDLData(QAction):
     """
-    GetData class manages the main logic and workflow of the plugin, 
+    GetData class manages the main logic and workflow of the plugin,
     connecting various forms and data fetching functionalities.
     """
 
     def __init__(self, plugin):
         """
         Initialize the GetData class, setting up the main plugin action.
-        
+
         Parameters:
             plugin (QgsPlugin): Reference to the main plugin instance.
         """
@@ -42,10 +43,9 @@ class GetBDLData(QAction):
         self.plugin = plugin
         self.iface = plugin.iface
 
-        
         # Initialize data containers
         self.do_merge = False
-        self.variables = [] 
+        self.variables = []
         self.units = []
         self.variableNames = {}
         self.layer = None
@@ -60,10 +60,9 @@ class GetBDLData(QAction):
 
         self.layer = None
 
-        
         # before first ever run we need to download the database
         # chech if the database exists
-        if not os.path.exists(DB_PATH): 
+        if not os.path.exists(DB_PATH):
             # if not exists we need to download it
             dialog = DataInitializationDialog(DB_PATH, DATABASE_URL)
             if dialog.exec_() != QDialog.Accepted:
@@ -92,7 +91,7 @@ class GetBDLData(QAction):
         and connects its completion to the subjects form.
         """
         self.units_form = UnitsForm(self.do_merge)
-        
+
         result = self.units_form.exec_()
         if result == QDialog.Rejected:
             # If the dialog is closed, terminate the plugin

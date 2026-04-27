@@ -12,12 +12,11 @@ __author__ = 'Wawrzyniec Zipser, Maciej Kamiński Politechnika Wrocławska'
 
 
 import sqlite3
-import binascii
 from .config import DB_PATH
-from qgis.core import QgsVectorLayer, QgsField, QgsGeometry, QgsFeature, QgsProject
+from qgis.core import QgsVectorLayer, QgsField, QgsFeature
 from qgis.PyQt.QtCore import QVariant
-from .utils.translations import _,gus_language
-from .utils.teryt import Teryt    
+from .utils.translations import _
+
 
 class Layer(QgsVectorLayer):
     """
@@ -58,7 +57,7 @@ class Layer(QgsVectorLayer):
     def create_new_feature(self, full_code, name, geometry, do_merge):
         """
         Creates a new feature for the specified unit and adds it to the layer.
-        
+
         Args:
             full_code (str): The full unit code.
             name (str): The name of the unit.
@@ -74,7 +73,7 @@ class Layer(QgsVectorLayer):
             None
         if geometry is None:
             None
-        
+
         # Create a new feature and set its attributes
         feature = QgsFeature()
         feature.setGeometry(geometry)
@@ -83,11 +82,11 @@ class Layer(QgsVectorLayer):
         # Add the feature to the provider
         self.provider.addFeature(feature)
 
-        # Update the feature index to quick insert data when obtained from 
+        # Update the feature index to quick insert data when obtained from
         if do_merge and full_code[-1] == '3':
-            self.feature_index[full_code[:-1]+'1'] = feature
-            self.feature_index[full_code[:-1]+'2'] = feature
-        
+            self.feature_index[full_code[:-1] + '1'] = feature
+            self.feature_index[full_code[:-1] + '2'] = feature
+
         self.feature_index[full_code] = feature
         return True
 
@@ -123,7 +122,6 @@ class Layer(QgsVectorLayer):
         self.year_columns[year].append(self.column_index[column])
         feature = self.feature_index[unit_id]
         self.provider.changeAttributeValues({feature.id(): {self.column_index[column]: value}})
-
 
     def get_name(self, short_code, type):
         """

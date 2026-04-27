@@ -10,16 +10,14 @@
 ###############################################################################
 __author__ = 'Wawrzyniec Zipser, Maciej Kamiński Politechnika Wrocławska'
 
-
-import sqlite3
-from PyQt5.QtCore import Qt, pyqtSignal, QThread
+from PyQt5.QtCore import pyqtSignal, QThread
 from .create_layer import Layer
 from .utils.translations import _
-from .config import DB_PATH
 import urllib3
 import time
 from .utils.expander import Expander
 from .utils.tokens import Tokens
+
 
 class DataFetchWorker(QThread):
     """
@@ -41,20 +39,20 @@ class DataFetchWorker(QThread):
             variables_names (dict): Mapping of variable IDs to their user-defined column names.
         """
         super().__init__()
-        
+
         # Initialize urllib3 connection pool
         self.http = urllib3.PoolManager()
-        
+
         # Create a new layer to store fetched data
         self.layer = Layer(_("GUS data layer"))
 
         self.do_merge = do_merge
         self.units = units
         self.variables = variables
-        self.variables_names = variables_names        
+        self.variables_names = variables_names
 
-        for full_code,name,geometry in Expander().codes_name_geometry(self.units,do_merge):
-            self.layer.create_new_feature(full_code,name,geometry,do_merge)
+        for full_code, name, geometry in Expander().codes_name_geometry(self.units, do_merge):
+            self.layer.create_new_feature(full_code, name, geometry, do_merge)
 
     def run(self):
         """
@@ -63,7 +61,7 @@ class DataFetchWorker(QThread):
         """
         total_requests = 2 * len(self.units) * len(self.variables)
         completed_requests = 0
-        
+
         for variable in self.variables:
             for unit in self.units:
                 # Update progress before each request
@@ -81,7 +79,7 @@ class DataFetchWorker(QThread):
                 completed_requests += 1
                 progress = int((completed_requests / total_requests) * 100)
                 self.progress_updated.emit(progress, unit, variable)
-        
+
         # Emit signal once all data is fetched
         self.data_fetched.emit()
 
@@ -99,7 +97,7 @@ class DataFetchWorker(QThread):
         page = 0
         max_retries = 15
         retry_count = 0
-        
+
         while retry_count < max_retries:
             # Get a valid token for the request
             token = Tokens().get_random_token()
@@ -108,7 +106,7 @@ class DataFetchWorker(QThread):
                 self.error_occurred.emit(_("No available tokens. D2"))
                 print("No available tokens. D2")  # Debugging output
                 return False
-            
+
             url = f"https://bdl.stat.gov.pl/api/v1/data/by-variable/{variable}"
             params = {
                 "unit-parent-id": unit,
@@ -121,11 +119,11 @@ class DataFetchWorker(QThread):
                 "User-Agent": "curl/7.64.1",
                 "Accept": "*/*"
             }
-            
+
             # Build full URL with params
             query_string = "&".join([f"{k}={v}" for k, v in params.items()])
             full_url = f"{url}?{query_string}"
-                        
+
             try:
                 response = self.http.request(
                     'GET',
@@ -133,10 +131,10 @@ class DataFetchWorker(QThread):
                     headers=headers,
                     timeout=urllib3.Timeout(connect=10, read=30)
                 )
-                
+
                 # Check rate limit headers
-                rate_limit_remaining = response.headers.get('X-Rate-Limit-Remaining')        
-                
+                rate_limit_remaining = response.headers.get('X-Rate-Limit-Remaining')
+
                 if response.status == 200:
                     import json
                     data = json.loads(response.data.decode('utf-8'))
@@ -153,7 +151,7 @@ class DataFetchWorker(QThread):
                     time.sleep(1)  # Rate limiting between requests
                 elif rate_limit_remaining is not None and int(rate_limit_remaining) == 0:
                     # Token has hit the rate limit - mark it as failed and try again
-                    print(f"Rate limit hit for token - retrying with different token")
+                    print("Rate limit hit for token - retrying with different token")
                     Tokens().mark_token_failed(token)
                     retry_count += 1
                     continue
@@ -170,11 +168,10 @@ class DataFetchWorker(QThread):
                 print(f"Exception: {e} - retrying")
                 retry_count += 1
                 continue
-        
+
         # If we've exhausted retries, emit error
         self.error_occurred.emit(_("Error while fetching data. D1"))
         return False
-
 
     def process_response(self, data):
         """
@@ -183,16 +180,16 @@ class DataFetchWorker(QThread):
         Args:
             data (dict): The JSON response from the API.
         """
-        
+
         variable_id = str(data["variableId"])
-        
+
         for result in data.get("results", []):
             unit_id = str(result["id"])
-            
+
             for value in result["values"]:
                 year = str(value["year"])
                 val = value["val"]
-                
+
                 self.layer.add_GUS_data(
                     unit_id,
                     year,

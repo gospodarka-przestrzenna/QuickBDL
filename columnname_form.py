@@ -21,7 +21,7 @@ class ChooseColumnName(QDialog):
     A dialog window for choosing column names for selected variables.
 
     This dialog is displayed after the user selects variables and allows the user
-    to input a column name for the variable that adheres to constraints like 
+    to input a column name for the variable that adheres to constraints like
     maximum length and uniqueness within the dataset.
     """
 
@@ -44,7 +44,7 @@ class ChooseColumnName(QDialog):
 
         # Label explaining column naming constraints
         self.label = QLabel(_("Choose a column name for the variable (up to {length} characters):").format(length=self.max_length))
-        
+
         # Retrieve a suggested name for the column or generate one if unavailable
         name = self.variableNames.get(variable)
         if name is None or len(name) < 2:
@@ -73,14 +73,14 @@ class ChooseColumnName(QDialog):
         Enable or disable the "Confirm" button based on input validation.
         """
         # let's make a copy of the variableNames dictionary and remove the current variable from it
-        other_names = dict(self.variableNames) 
+        other_names = dict(self.variableNames)
         if self.variable in other_names:
             del other_names[self.variable]
 
         self.button.setEnabled(
-            len(self.column_name.text()) <= self.max_length and  # Column name length is within the allowed limit
+            # Column name length is within the allowed limit
             # column name must not appear in other_names dictionary it must be unique
-            self.column_name.text() not in other_names.values()
+            len(self.column_name.text()) <= self.max_length and self.column_name.text() not in other_names.values()
         )
         self.variableNames[self.variable] = self.column_name.text()
 
@@ -111,7 +111,7 @@ class ChooseColumnName(QDialog):
                 SELECT subject_id, n1, n2, n3, n4, n5, measure_unit_name
                 FROM variables
                 WHERE id = ? and language = ?
-            """, (variable_id,gus_language))
+            """, (variable_id, gus_language))
 
             result = cursor.fetchone()
             if not result:
@@ -126,11 +126,11 @@ class ChooseColumnName(QDialog):
                 FROM subjects
                 WHERE subject_code = ? and language = ?
             """, (subject_id, gus_language))
-            
+
             result = cursor.fetchone()
             if not result:
                 raise ValueError(_("No name found for variable ID: {id}").format(id=variable_id))
-            
+
             parent_name, = result
 
             return f"{parent_name} {name} ({measure_unit_name})"

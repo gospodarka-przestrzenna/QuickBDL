@@ -12,7 +12,7 @@ __author__ = 'Wawrzyniec Zipser, Maciej Kamiński Politechnika Wrocławska'
 
 
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QWidget, QButtonGroup,
+    QDialog, QVBoxLayout, QButtonGroup,
     QRadioButton, QPushButton, QLabel
 )
 from PyQt5.QtCore import Qt
@@ -52,7 +52,7 @@ class ApproachForm(QDialog):
         self.radio_group = QButtonGroup()
         self.radio_group.addButton(self.option1)
         self.radio_group.addButton(self.option2)
-        
+
         # Next button to proceed to the next step
         self.button = QPushButton(_("Next"))
         self.button.setEnabled(False)  # Disabled until an option is selected
@@ -78,9 +78,9 @@ class ApproachForm(QDialog):
         Handles the close event for the dialog.
         If the user closes the dialog window, the form is rejected.
         """
-        event.accept()    
+        event.accept()
         self.reject()
-        
+
     def activate_button(self):
         """
         Enables the Next button when a radio button is selected.

@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import QDialog, QVBoxLayout, QPushButton, QLabel, QProgress
 from PyQt5.QtCore import Qt
 from .datafetch_worker import DataFetchWorker
 from .utils.translations import _
-from .config import DB_PATH
+
 
 class DataFetchForm(QDialog):
     """
@@ -60,15 +60,15 @@ class DataFetchForm(QDialog):
         layout.addWidget(self.button)
 
         self.setLayout(layout)
-        
+
     def showEvent(self, event):
         """
         Called when the dialog is shown. Initializes and starts the data fetching worker thread.
         """
         self.worker = DataFetchWorker(
             self.do_merge,
-            self.units, 
-            self.variables, 
+            self.units,
+            self.variables,
             self.variables_names
         )
         # Connect worker signals
