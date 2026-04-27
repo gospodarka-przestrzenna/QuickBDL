@@ -16,10 +16,11 @@ from PyQt5.QtCore import Qt, pyqtSignal, QThread
 from .create_layer import Layer
 from .utils.translations import _
 from .config import DB_PATH
-import requests
+import urllib3
 import time
 from .utils.expander import Expander
 from .utils.tokens import Tokens
+
 class DataFetchWorker(QThread):
     """
     Worker thread for fetching data from the API. Handles progress updates, error handling,
@@ -40,6 +41,9 @@ class DataFetchWorker(QThread):
             variables_names (dict): Mapping of variable IDs to their user-defined column names.
         """
         super().__init__()
+        
+        # Initialize urllib3 connection pool
+        self.http = urllib3.PoolManager()
         
         # Create a new layer to store fetched data
         self.layer = Layer(_("GUS data layer"))
@@ -70,7 +74,7 @@ class DataFetchWorker(QThread):
                 # Fetch data for the current variable-unit pair
                 success = self.fetch_data(variable, unit)
                 if not success:
-                    self.error_occurred.emit(_("Error while fetching data. D1"))
+                    # Error was already emitted by fetch_data
                     return
 
                 # Update progress after successful fetch
@@ -93,11 +97,16 @@ class DataFetchWorker(QThread):
             bool: True if the data was fetched successfully, False otherwise.
         """
         page = 0
-        while True:
+        max_retries = 15
+        retry_count = 0
+        
+        while retry_count < max_retries:
             # Get a valid token for the request
             token = Tokens().get_random_token()
+
             if not token:
                 self.error_occurred.emit(_("No available tokens. D2"))
+                print("No available tokens. D2")  # Debugging output
                 return False
             
             url = f"https://bdl.stat.gov.pl/api/v1/data/by-variable/{variable}"
@@ -107,22 +116,64 @@ class DataFetchWorker(QThread):
                 "page": page,
                 "page-size": 100
             }
-            headers = {"X-ClientId": token}
-
-            response = requests.get(url, headers=headers, params=params)
-            if response.status_code == 200:
-                data = response.json()
-                self.process_response(data)
-                # Stop if there's no next page
-                if "links" not in data or "next" not in data["links"]:
-                    break
+            headers = {
+                "X-ClientId": token,
+                "User-Agent": "curl/7.64.1",
+                "Accept": "*/*"
+            }
+            
+            # Build full URL with params
+            query_string = "&".join([f"{k}={v}" for k, v in params.items()])
+            full_url = f"{url}?{query_string}"
+                        
+            try:
+                response = self.http.request(
+                    'GET',
+                    full_url,
+                    headers=headers,
+                    timeout=urllib3.Timeout(connect=10, read=30)
+                )
                 
-                page += 1
-                time.sleep(1)  # Rate limiting between requests
-            else:
-                Tokens().mark_token_failed(token)   
+                # Check rate limit headers
+                rate_limit_remaining = response.headers.get('X-Rate-Limit-Remaining')        
+                
+                if response.status == 200:
+                    import json
+                    data = json.loads(response.data.decode('utf-8'))
+
+                    # Process the response and add data to the layer
+                    self.process_response(data)
+
+                    # Stop if there's no next page
+                    if "links" not in data or "next" not in data["links"]:
+                        return True
+
+                    page += 1
+                    retry_count = 0  # Reset retry counter on success
+                    time.sleep(1)  # Rate limiting between requests
+                elif rate_limit_remaining is not None and int(rate_limit_remaining) == 0:
+                    # Token has hit the rate limit - mark it as failed and try again
+                    print(f"Rate limit hit for token - retrying with different token")
+                    Tokens().mark_token_failed(token)
+                    retry_count += 1
+                    continue
+                else:
+                    # Other HTTP errors - try again
+                    print(f"HTTP {response.status} for {variable} and {unit} - retrying")
+                    retry_count += 1
+                    continue
+            except urllib3.exceptions.TimeoutError:
+                print(f"Timeout while fetching data for {variable} and {unit} - retrying")
+                retry_count += 1
                 continue
-        return True
+            except Exception as e:
+                print(f"Exception: {e} - retrying")
+                retry_count += 1
+                continue
+        
+        # If we've exhausted retries, emit error
+        self.error_occurred.emit(_("Error while fetching data. D1"))
+        return False
 
 
     def process_response(self, data):
@@ -132,6 +183,7 @@ class DataFetchWorker(QThread):
         Args:
             data (dict): The JSON response from the API.
         """
+        
         variable_id = str(data["variableId"])
         
         for result in data.get("results", []):
